@@ -6,34 +6,35 @@
   
 `include "even_odd.v"
 
-`define P_LOG  7
-`define WIDTH 32
+`define P_LOG  9
+`define DATW  64
+`define KEYW  32
   
 module tb_EVEN_ODD();
 
   reg CLK; initial begin CLK=0; forever #50 CLK=~CLK; end
   reg RST; initial begin RST=1; #400 RST=0; end
   
-  wire [(`WIDTH<<`P_LOG)-1:0] init_data;
-  wire [(`WIDTH<<`P_LOG)-1:0] chk_rslt;
+  wire [(`DATW<<`P_LOG)-1:0] init_data;
+  wire [(`DATW<<`P_LOG)-1:0] chk_rslt;
   
-  reg                         rst_buf;
-  reg                         finish;
+  reg                        rst_buf;
+  reg                        finish;
      
-  reg  [(`WIDTH<<`P_LOG)-1:0] DIN;
-  reg                         DINEN;
+  reg  [(`DATW<<`P_LOG)-1:0] DIN;
+  reg                        DINEN;
   
-  wire [(`WIDTH<<`P_LOG)-1:0] DOT;
-  wire                        DOTEN;
+  wire [(`DATW<<`P_LOG)-1:0] DOT;
+  wire                       DOTEN;
   
-  EVEN_ODD #(`P_LOG, `WIDTH) even_odd(CLK, RST, DIN, DINEN, DOT, DOTEN);
+  EVEN_ODD #(`P_LOG, `DATW, `KEYW) even_odd(CLK, RST, DIN, DINEN, DOT, DOTEN);
 
   genvar i;
   generate
     for (i=0; i<(1<<`P_LOG); i=i+1) begin: loop
-      assign init_data[`WIDTH*(i+1)-1:`WIDTH*i] = (1<<`P_LOG) - i;
-      assign chk_rslt[`WIDTH*(i+1)-1:`WIDTH*i]  = i + 1;
-      always @(posedge CLK) if (DOTEN) $write("%d ", DOT[`WIDTH*(i+1)-1:`WIDTH*i]);
+      assign init_data[(`KEYW+`DATW*i)-1:`DATW*i] = (1<<`P_LOG) - i;
+      assign chk_rslt[(`KEYW+`DATW*i)-1:`DATW*i]  = i + 1;
+      always @(posedge CLK) if (DOTEN) $write("%d ", DOT[(`KEYW+`DATW*i)-1:`DATW*i]);
     end
   endgenerate
   

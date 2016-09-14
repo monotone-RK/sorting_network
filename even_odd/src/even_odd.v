@@ -6,16 +6,17 @@
   
 /***** Compare-and-exchange (CAE)                                         *****/
 /******************************************************************************/
-module CAE #(parameter               WIDTH = 64)
-            (input  wire [WIDTH-1:0] DIN0,
-             input  wire [WIDTH-1:0] DIN1,
-             output wire [WIDTH-1:0] DOT0,
-             output wire [WIDTH-1:0] DOT1);
+module CAE #(parameter              DATW = 64,
+             parameter              KEYW = 32)
+            (input  wire [DATW-1:0] DIN0,
+             input  wire [DATW-1:0] DIN1,
+             output wire [DATW-1:0] DOT0,
+             output wire [DATW-1:0] DOT1);
   
-  function [WIDTH-1:0] mux;
-    input [WIDTH-1:0] a;
-    input [WIDTH-1:0] b;
-    input             sel;
+  function [DATW-1:0] mux;
+    input [DATW-1:0] a;
+    input [DATW-1:0] b;
+    input            sel;
     begin
       case (sel)
         1'b0: mux = a;
@@ -24,7 +25,7 @@ module CAE #(parameter               WIDTH = 64)
     end
   endfunction
   
-  wire comp_rslt = (DIN0[31:0] <= DIN1[31:0]);
+  wire comp_rslt = (DIN0[KEYW-1:0] <= DIN1[KEYW-1:0]);
   
   assign DOT0 = mux(DIN1, DIN0, comp_rslt);
   assign DOT1 = mux(DIN0, DIN1, comp_rslt);
@@ -34,65 +35,67 @@ endmodule
 
 /***** BOX                                                                *****/
 /******************************************************************************/
-module BOX #(parameter                        P_LOG = 4,
-             parameter                        WIDTH = 64)
-            (input  wire                      CLK,
-             input  wire [(WIDTH<<P_LOG)-1:0] DIN,
-             output wire [(WIDTH<<P_LOG)-1:0] DOT);
+module BOX #(parameter                       P_LOG = 4,
+             parameter                       DATW  = 64,
+             parameter                       KEYW  = 32)
+            (input  wire                     CLK,
+             input  wire [(DATW<<P_LOG)-1:0] DIN,
+             output wire [(DATW<<P_LOG)-1:0] DOT);
 
 
-  reg  [(WIDTH<<P_LOG)-1:0] pd [P_LOG-1:0];  // pipeline regester for data
+  reg [(DATW<<P_LOG)-1:0] pd [P_LOG-1:0];  // pipeline regester for data
 
   genvar i, j, k;
   generate
     for (i=0; i<P_LOG; i=i+1) begin: stage
-      wire [(WIDTH<<P_LOG)-1:0] dot;
+      wire [(DATW<<P_LOG)-1:0] dot;
       if (i == 0) begin
         for (j=0; j<(1<<(P_LOG-1)); j=j+1) begin: caes
-          CAE #(WIDTH) cae(DIN[WIDTH*(j+1)-1:WIDTH*j],
-                           DIN[WIDTH*((j+1)+(1<<(P_LOG-1)))-1:WIDTH*(j+(1<<(P_LOG-1)))],
-                           dot[WIDTH*(j+1)-1:WIDTH*j],
-                           dot[WIDTH*((j+1)+(1<<(P_LOG-1)))-1:WIDTH*(j+(1<<(P_LOG-1)))]);
+          CAE #(DATW, KEYW) cae(DIN[DATW*(j+1)-1:DATW*j],
+                                DIN[DATW*((j+1)+(1<<(P_LOG-1)))-1:DATW*(j+(1<<(P_LOG-1)))],
+                                dot[DATW*(j+1)-1:DATW*j],
+                                dot[DATW*((j+1)+(1<<(P_LOG-1)))-1:DATW*(j+(1<<(P_LOG-1)))]);
         end
         always @(posedge CLK) pd[i] <= dot;
       end else begin
         for (k=0; k<((1<<i)-1); k=k+1) begin: blocks
           for (j=0; j<(1<<(P_LOG-(i+1))); j=j+1) begin: caes
-            CAE #(WIDTH) cae(pd[i-1][WIDTH*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))-1:WIDTH*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))],
-                             pd[i-1][WIDTH*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))-1:WIDTH*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))],
-                             dot[WIDTH*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))-1:WIDTH*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))],
-                             dot[WIDTH*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))-1:WIDTH*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))]);
+            CAE #(DATW, KEYW) cae(pd[i-1][DATW*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))-1:DATW*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))],
+                                  pd[i-1][DATW*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))-1:DATW*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))],
+                                  dot[DATW*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))-1:DATW*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1))))],
+                                  dot[DATW*((j+1)+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))-1:DATW*(j+(k*(1<<(P_LOG-i)))+(1<<(P_LOG-(i+1)))+(1<<(P_LOG-(i+1))))]);
           end
         end
-        always @(posedge CLK) pd[i] <= {pd[i-1][(WIDTH<<P_LOG)-1:WIDTH*((1<<P_LOG)-(1<<(P_LOG-(i+1))))], 
-                                        dot[WIDTH*((1<<P_LOG)-(1<<(P_LOG-(i+1))))-1:WIDTH*(1<<(P_LOG-(i+1)))], 
-                                        pd[i-1][WIDTH*(1<<(P_LOG-(i+1)))-1:0]};
+        always @(posedge CLK) pd[i] <= {pd[i-1][(DATW<<P_LOG)-1:DATW*((1<<P_LOG)-(1<<(P_LOG-(i+1))))], 
+                                        dot[DATW*((1<<P_LOG)-(1<<(P_LOG-(i+1))))-1:DATW*(1<<(P_LOG-(i+1)))], 
+                                        pd[i-1][DATW*(1<<(P_LOG-(i+1)))-1:0]};
       end
     end
   endgenerate
   
   assign DOT = pd[P_LOG-1];
-
+  
 endmodule  
 
   
 /***** Sorting Network                                                    *****/
 /******************************************************************************/
-module EVEN_ODD #(parameter                        P_LOG = 4,
-                  parameter                        WIDTH = 64)
-                 (input  wire                      CLK,
-                  input  wire                      RST_IN,
-                  input  wire [(WIDTH<<P_LOG)-1:0] DIN,
-                  input  wire                      DINEN,
-                  output wire [(WIDTH<<P_LOG)-1:0] DOT,
-                  output wire                      DOTEN);
+module EVEN_ODD #(parameter                       P_LOG = 4,
+                  parameter                       DATW  = 64,
+                  parameter                       KEYW  = 32)
+                 (input  wire                     CLK,
+                  input  wire                     RST_IN,
+                  input  wire [(DATW<<P_LOG)-1:0] DIN,
+                  input  wire                     DINEN,
+                  output wire [(DATW<<P_LOG)-1:0] DOT,
+                  output wire                     DOTEN);
 
 
   // Input
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  reg                      RST;   always @(posedge CLK) RST   <= RST_IN;
-  reg [(WIDTH<<P_LOG)-1:0] din;   always @(posedge CLK) din   <= DIN;
-  reg                      dinen; always @(posedge CLK) dinen <= (RST) ? 0 : DINEN;
+  reg                     RST;   always @(posedge CLK) RST   <= RST_IN;
+  reg [(DATW<<P_LOG)-1:0] din;   always @(posedge CLK) din   <= DIN;
+  reg                     dinen; always @(posedge CLK) dinen <= (RST) ? 0 : DINEN;
   
   
   // Core
@@ -102,10 +105,11 @@ module EVEN_ODD #(parameter                        P_LOG = 4,
   genvar i, j;
   generate
     for (i=0; i<P_LOG; i=i+1) begin: level
-      wire [(WIDTH<<P_LOG)-1:0] box_din;
-      wire [(WIDTH<<P_LOG)-1:0] box_dot;
+      wire [(DATW<<P_LOG)-1:0] box_din;
+      wire [(DATW<<P_LOG)-1:0] box_dot;
       for (j=0; j<(1<<(P_LOG-(i+1))); j=j+1) begin: boxes
-        BOX #((i+1), WIDTH) box(CLK, box_din[WIDTH*(1<<(i+1))*(j+1)-1:WIDTH*(1<<(i+1))*j], box_dot[WIDTH*(1<<(i+1))*(j+1)-1:WIDTH*(1<<(i+1))*j]);
+        BOX #((i+1), DATW, KEYW) 
+        box(CLK, box_din[DATW*(1<<(i+1))*(j+1)-1:DATW*(1<<(i+1))*j], box_dot[DATW*(1<<(i+1))*(j+1)-1:DATW*(1<<(i+1))*j]);
       end
     end
   endgenerate
