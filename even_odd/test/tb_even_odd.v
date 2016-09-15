@@ -32,8 +32,10 @@ module tb_EVEN_ODD();
   genvar i;
   generate
     for (i=0; i<(1<<`P_LOG); i=i+1) begin: loop
-      assign init_data[(`KEYW+`DATW*i)-1:`DATW*i] = (1<<`P_LOG) - i;
-      assign chk_rslt[(`KEYW+`DATW*i)-1:`DATW*i]  = i + 1;
+      wire [`KEYW-1:0] init_data_key = (1<<`P_LOG) - i;
+      wire [`KEYW-1:0] chk_rslt_key  = i + 1;
+      assign init_data[`DATW*(i+1)-1:`DATW*i] = {{(`DATW-`KEYW){1'b1}}, init_data_key};
+      assign chk_rslt[`DATW*(i+1)-1:`DATW*i]  = {{(`DATW-`KEYW){1'b1}}, chk_rslt_key};
       always @(posedge CLK) if (DOTEN) $write("%d ", DOT[(`KEYW+`DATW*i)-1:`DATW*i]);
     end
   endgenerate
