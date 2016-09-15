@@ -18,7 +18,6 @@ module tb_EVEN_ODD();
   wire [(`DATW<<`P_LOG)-1:0] init_data;
   wire [(`DATW<<`P_LOG)-1:0] chk_rslt;
   
-  reg                        rst_buf;
   reg                        finish;
      
   reg  [(`DATW<<`P_LOG)-1:0] DIN;
@@ -40,10 +39,8 @@ module tb_EVEN_ODD();
     end
   endgenerate
   
-  always @(posedge CLK) rst_buf <= RST;
-    
   always @(posedge CLK) begin
-    if (rst_buf) begin
+    if (RST) begin
       DIN    <= init_data;
       DINEN  <= 1;
       finish <= 0;

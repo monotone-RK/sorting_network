@@ -84,7 +84,7 @@ module EVEN_ODD #(parameter                       P_LOG = 4,
                   parameter                       DATW  = 64,
                   parameter                       KEYW  = 32)
                  (input  wire                     CLK,
-                  input  wire                     RST_IN,
+                  input  wire                     RST,
                   input  wire [(DATW<<P_LOG)-1:0] DIN,
                   input  wire                     DINEN,
                   output wire [(DATW<<P_LOG)-1:0] DOT,
@@ -93,7 +93,6 @@ module EVEN_ODD #(parameter                       P_LOG = 4,
 
   // Input
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  reg                     RST;   always @(posedge CLK) RST   <= RST_IN;
   reg [(DATW<<P_LOG)-1:0] din;   always @(posedge CLK) din   <= DIN;
   reg                     dinen; always @(posedge CLK) dinen <= (RST) ? 0 : DINEN;
   
