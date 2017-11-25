@@ -114,7 +114,7 @@ module EVEN_ODD #(parameter                       P_LOG = 4,
   endgenerate
   
   generate
-    for (i=0; i<P_LOG; i=i+1) begin
+    for (i=0; i<P_LOG; i=i+1) begin: connection
       if (i == 0) assign level[i].box_din = din;
       else        assign level[i].box_din = level[i-1].box_dot;
     end
